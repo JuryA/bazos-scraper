@@ -14,3 +14,5 @@ class BazosItem(scrapy.Item):
     title = scrapy.Field()
     content = scrapy.Field()
     price = scrapy.Field()
+    location = scrapy.Field()
+    views = scrapy.Field()

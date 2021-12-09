@@ -8,29 +8,38 @@ class BazosSpider(scrapy.Spider):
     allowed_domains = ['bazos.cz']
 
     def parse(self, response):
-        for categoryUrl in response.xpath('//span[@class="nadpisnahlavni"]/a/@href'):
-            categoryUrl = categoryUrl.get()
+        for category_href in response.xpath('//span[@class="nadpisnahlavni"]/a/@href'):
+            category_url = category_href.get()
             yield scrapy.Request(
-                url=categoryUrl,
+                url=category_url,
                 callback=self.parse_category,
-                meta={'categoryUrl': categoryUrl}
+                meta={'category_url': category_url[:-1]}
             )
 
     def parse_category(self, response):
-        for categoryEl in response.xpath('//div[@class="barvaleva"]/a'):
-            url = categoryEl.xpath('./@href').get()
+        for category_el in response.xpath('//div[@class="barvaleva"]/a'):
+            url = category_el.xpath('./@href').get()
             yield scrapy.Request(
-                url=url if 'bazos' in url else f"{response.meta['categoryUrl'][:-1]}{url}",
+                url=url if 'bazos' in url else f"{response.meta['category_url']}{url}",
                 callback=self.parse_ad,
-                meta={'category': categoryEl.xpath('./text()').get()}
+                meta={'category': category_el.xpath('./text()').get(), 'category_url': response.meta['category_url']}
             )
 
     def parse_ad(self, response):
-        for adEl in response.xpath('//div[@class="inzeraty inzeratyflex"]'):
+        next_page_url = response.xpath('//div[@class="strankovani"]/a[last()]/@href').get()
+        yield scrapy.Request(
+                url=next_page_url if 'bazos' in next_page_url else f"{response.meta['category_url']}{next_page_url}",
+                callback=self.parse_ad,
+                meta={'category': response.meta['category'], 'category_url': response.meta['category_url']}
+            )
+        for ad_el in response.xpath('//div[@class="inzeraty inzeratyflex"]'):
             yield BazosItem(
-                title=adEl.xpath('.//h2[@class="nadpis"]/a/text()').get(),
-                content=adEl.xpath('.//div[@class="popis"]/text()').get(),
-                price=adEl.xpath('.//div[@class="inzeratycena"]/b/text()').get(),
-                category=response.meta['category']
+                title=ad_el.xpath('.//h2[@class="nadpis"]/a/text()').get(),
+                content=ad_el.xpath('.//div[@class="popis"]/text()').get(),
+                price=ad_el.xpath('.//div[@class="inzeratycena"]/b/text()').get(),
+                category=response.meta['category'],
+                location=ad_el.xpath('.//div[@class="inzeratylok"]/text()').get(),
+                views=ad_el.xpath('.//div[@class="inzeratyview"]/text()').get(),
+                url=ad_el.xpath('.//h2[@class="nadpis"]/a/@href').get()
             )
 

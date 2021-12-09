@@ -18,3 +18,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.taskipy.tasks]
 scrapy = "scrapy"
 crawl = "scrapy crawl bazos"
+crawl_json = "scrapy crawl bazos -O bazos.json"
